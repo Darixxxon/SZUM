@@ -5,3 +5,6 @@ torchvision
 pillow
 matplotlib
 kagglehub
+scipy
+opencv-python
+imagehash
