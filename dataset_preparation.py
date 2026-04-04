@@ -11,7 +11,7 @@ import matplotlib.patches as mpatches
 PLOT_DIR = Path("Plots")
 PLOT_DIR.mkdir(exist_ok=True)
 DATASET_ROOT = Path("Dataset")
-IMG_SIZE     = 224
+IMG_SIZE     = 256
 BATCH_SIZE   = 32
 RANDOM_STATE = 42 # Set value for RANDOM_STATE which is used in train_test_split ensures reproducible data split
 
