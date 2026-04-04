@@ -1,5 +1,4 @@
-﻿import os
-import numpy as np
+﻿import numpy as np
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -9,6 +8,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+PLOT_DIR = Path("Plots")
+PLOT_DIR.mkdir(exist_ok=True)
 DATASET_ROOT = Path("Dataset")
 IMG_SIZE     = 224
 BATCH_SIZE   = 32
@@ -219,7 +220,7 @@ ax.legend()
 ax.grid(axis="y", alpha=0.3, zorder=0)
 ax.set_axisbelow(True)
 plt.tight_layout()
-plt.savefig("chart1_split_sizes.png", dpi=150)
+plt.savefig(PLOT_DIR/"chart1_split_sizes.png", dpi=150)
 plt.show()
 
 # CHART 2 — Proportions as stacked bar (one row per split)
@@ -245,7 +246,7 @@ ax.set_xlim(0, 100)
 patches = [mpatches.Patch(color=COLORS[r], label=r) for r in roles]
 ax.legend(handles=patches, loc="lower right")
 plt.tight_layout()
-plt.savefig("chart2_proportions.png", dpi=150)
+plt.savefig(PLOT_DIR/"chart2_proportions.png", dpi=150)
 plt.show()
 
 # CHART 3 — Per-class distribution in Train / Val / Test (Split 1 & 3) Shows whether stratification worked correctly
@@ -271,7 +272,7 @@ for ax, split_name, split_counts in zip(
 axes[0].set_yticks(y)
 axes[0].set_yticklabels(short_names, fontsize=7)
 plt.tight_layout()
-plt.savefig("chart3_class_distribution.png", dpi=150)
+plt.savefig(PLOT_DIR/"chart3_class_distribution.png", dpi=150)
 plt.show()
 
 # CHART 4 — Class balance ratio (max class / min class per set) A ratio of 1.0 = perfectly balanced. Higher = more imbalanced.
@@ -306,7 +307,7 @@ ax.legend()
 ax.grid(axis="y", alpha=0.3, zorder=0)
 ax.set_axisbelow(True)
 plt.tight_layout()
-plt.savefig("chart4_balance_ratio.png", dpi=150)
+plt.savefig(PLOT_DIR/"chart4_balance_ratio.png", dpi=150)
 plt.show()
 
 print("\nCharts saved: chart1_split_sizes.png, chart2_proportions.png, "
