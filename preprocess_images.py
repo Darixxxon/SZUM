@@ -6,7 +6,7 @@ import cv2
 import shutil
 
 # Configuration
-SOURCE_DIR = Path("Dataset")
+SOURCE_DIR = Path("Dataset_filtered")
 TARGET_DIR = Path("Dataset_grayscale_eq")
 IMG_SIZE = (256, 256)  # Match the validation script
 
