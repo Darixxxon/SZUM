@@ -3,11 +3,15 @@ import shutil
 import imagehash
 from collections import defaultdict
 from PIL import Image
+import matplotlib.pyplot as plt
 
 path = os.getcwd()
 plant_village_train_path = path + '/PlantVillage/train/'
 plant_village_val_path = path + '/PlantVillage/val/'
 mango_leaf_path = path + '/MangoLeaf'  # ADJUST TO YOUR OWN DIRECTORY NAME
+
+# Toggle duplicate display
+SHOW_DUPLICATES = False  # Set to True to display duplicate images side by side
 
 # Classes to skip
 SKIP_CLASSES = {
@@ -18,62 +22,70 @@ SKIP_CLASSES = {
 }
 
 class DuplicateChecker:
-    def __init__(self, bucket_prefix=6, threshold=5):
+    def __init__(self, bucket_prefix=6, threshold=1, show_duplicates=False):
         self.bucket_prefix = bucket_prefix
         self.threshold = threshold
+        self.show_duplicates = show_duplicates
         self.reset()
 
     def reset(self):
-        self.seen_exact = set()
+        self.seen_exact = {}
         self.seen_buckets = defaultdict(list)
 
     def fingerprint_image(self, img_path):
         img = Image.open(img_path)
         img = img.convert('L').resize((256, 256), Image.LANCZOS)
-        return {
-            'ahash': imagehash.average_hash(img),
-            'phash': imagehash.phash(img),
-            'dhash': imagehash.dhash(img)
-        }
+        return imagehash.phash(img)
 
     def bucket_keys(self, fingerprint):
-        return {
-            str(fingerprint['ahash'])[:self.bucket_prefix],
-            str(fingerprint['phash'])[:self.bucket_prefix],
-            str(fingerprint['dhash'])[:self.bucket_prefix]
-        }
+        return {str(fingerprint)[:self.bucket_prefix]}
+
+    def display_duplicate(self, img_path1, img_path2):
+        img1 = Image.open(img_path1)
+        img2 = Image.open(img_path2)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        ax1.imshow(img1)
+        ax1.set_title(f'Current: {os.path.basename(img_path1)}')
+        ax1.axis('off')
+        ax2.imshow(img2)
+        ax2.set_title(f'Duplicate: {os.path.basename(img_path2)}')
+        ax2.axis('off')
+        plt.tight_layout()
+        plt.show()
 
     def is_duplicate(self, img_path):
-        """Check whether the image is a duplicate using optimized bucketed matching."""
+        """Check whether the image is a duplicate using optimized bucketed matching. Returns the path of the duplicate if found, else None."""
         try:
             fingerprint = self.fingerprint_image(img_path)
-            exact_key = str(fingerprint['ahash'])
+            exact_key = str(fingerprint)
 
             if exact_key in self.seen_exact:
-                return True
+                if self.show_duplicates:
+                    self.display_duplicate(img_path, self.seen_exact[exact_key])
+                return self.seen_exact[exact_key]
 
             candidates = []
             for key in self.bucket_keys(fingerprint):
                 candidates.extend(self.seen_buckets[key])
 
-            for old_fp in candidates:
-                ah_dist = fingerprint['ahash'] - old_fp['ahash']
-                ph_dist = fingerprint['phash'] - old_fp['phash']
-                dh_dist = fingerprint['dhash'] - old_fp['dhash']
-                if ah_dist <= self.threshold and ph_dist <= self.threshold and dh_dist <= self.threshold:
-                    return True
+            for old_fp, old_path in candidates:
+                dist = fingerprint - old_fp
+                if dist <= self.threshold:
+                    if self.show_duplicates:
+                        self.display_duplicate(img_path, old_path)
+                    return old_path
 
-            self.seen_exact.add(exact_key)
+            self.seen_exact[exact_key] = img_path
             for key in self.bucket_keys(fingerprint):
-                self.seen_buckets[key].append(fingerprint)
+                self.seen_buckets[key].append((fingerprint, img_path))
 
-            return False
+            return None
         except Exception as e:
             print(f"Error hashing {img_path}: {e}")
-            return False  # Skip on error
+            return None  # Skip on error
 
 
-duplicate_checker = DuplicateChecker()
+duplicate_checker = DuplicateChecker(show_duplicates=SHOW_DUPLICATES)
 
 # Extraction of Plant Village dataset - ignoring directory structure for learning purposes
 def extract_dirs_pv(base_path, target_base='Dataset', skip_classes=False, dedup=False):
@@ -94,9 +106,12 @@ def extract_dirs_pv(base_path, target_base='Dataset', skip_classes=False, dedup=
                 src = os.path.join(folder_path, filename)
                 dst = os.path.join(target_path, filename)
 
-                if dedup and duplicate_checker.is_duplicate(src):
-                    print(f"Skipping duplicate: {src}")
-                    continue
+                if dedup:
+                    dup_path = duplicate_checker.is_duplicate(src)
+                    if dup_path:
+                        if not duplicate_checker.show_duplicates:
+                            print(f"Duplicate detected: {src} is duplicate of {dup_path}")
+                        continue
 
                 shutil.copy(src, dst)
 
@@ -121,13 +136,16 @@ def extract_dirs_ml(base_path, target_base='Dataset', skip_classes=False, dedup=
                 src = os.path.join(folder_path, filename)
                 dst = os.path.join(target_path, filename)
 
-                if dedup and duplicate_checker.is_duplicate(src):
-                    print(f"Skipping duplicate: {src}")
-                    continue
+                if dedup:
+                    dup_path = duplicate_checker.is_duplicate(src)
+                    if dup_path:
+                        if not duplicate_checker.show_duplicates:
+                            print(f"Duplicate detected: {src} is duplicate of {dup_path}")
+                        continue
 
                 shutil.copy(src, dst)
 
-# Call extraction methods for full dataset
+
 print("Creating full Dataset...")
 extract_dirs_pv(plant_village_train_path, target_base='Dataset')
 extract_dirs_pv(plant_village_val_path, target_base='Dataset')
@@ -136,8 +154,7 @@ extract_dirs_ml(mango_leaf_path, target_base='Dataset')
 # Reset duplicate detection state for filtered dataset
 duplicate_checker.reset()
 
-# Call extraction methods for filtered dataset
 print("Creating filtered Dataset_filtered...")
+extract_dirs_ml(mango_leaf_path, target_base='Dataset_filtered', skip_classes=True, dedup=True)
 extract_dirs_pv(plant_village_train_path, target_base='Dataset_filtered', skip_classes=True, dedup=True)
 extract_dirs_pv(plant_village_val_path, target_base='Dataset_filtered', skip_classes=True, dedup=True)
-extract_dirs_ml(mango_leaf_path, target_base='Dataset_filtered', skip_classes=True, dedup=True)
