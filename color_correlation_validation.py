@@ -7,7 +7,7 @@ from scipy import stats
 import argparse
 
 PLOT_DIR = Path("Plots")
-DATASET_ROOT = Path("Dataset")
+DATASET_ROOT = Path("dataset_augmented")
 IMG_SIZE = (256, 256)  # Resize for consistency, as in dataset_preparation.py
 
 def load_images_and_colors(root: Path):

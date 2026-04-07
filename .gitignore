@@ -7,3 +7,5 @@ Dataset_filtered
 __pycache__
 .venv
 venv
+dataset_augmented
+splits
