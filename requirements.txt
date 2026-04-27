@@ -8,3 +8,5 @@ kagglehub
 scipy
 opencv-python
 imagehash
+tqdm
+timm

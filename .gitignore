@@ -1,4 +1,4 @@
-﻿Dataset
+Dataset
 MangoLeaf
 PlantVillage
 Plots
@@ -9,3 +9,6 @@ __pycache__
 venv
 dataset_augmented
 splits
+models
+training_results
+training_plots
