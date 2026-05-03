@@ -4,6 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
+from dataset_preparation import get_label_encoder
 
 matplotlib.rcParams.update(
     {
@@ -193,6 +194,40 @@ def plot_all_val_curves(histories, filename="val_curves_all.png"):
     plt.close()
     print(f"  Saved: {save_path}")
 
+
+def plot_confusion_matrix(name: str):
+    cm_path = RESULTS_DIR / f"confusion_{name}.npy"
+    if not cm_path.exists():
+        print(f"  [SKIP] Confusion matrix not found for {name}")
+        return
+    cm = np.load(cm_path)
+    le = get_label_encoder()
+    labels = list(le.classes_)
+
+    plt.figure(figsize=(8, 8))
+    cm_sum = cm.sum(axis=1, keepdims=True)
+    cm_norm = cm.astype(float) / (cm_sum + 1e-9)
+    im = plt.imshow(cm_norm, interpolation='nearest', cmap='Blues')
+    plt.title(f"Confusion Matrix — {name}")
+    plt.colorbar(im, fraction=0.046, pad=0.04)
+
+    n = len(labels)
+    if n <= 30:
+        plt.xticks(range(n), labels, rotation=90)
+        plt.yticks(range(n), labels)
+    else:
+        step = max(1, n // 30)
+        plt.xticks(range(0, n, step), [labels[i] for i in range(0, n, step)], rotation=90)
+        plt.yticks(range(0, n, step), [labels[i] for i in range(0, n, step)])
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
+    save_path = PLOTS_DIR / f"confusion_{name}.png"
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+    print(f"  Saved: {save_path}")
+
 if __name__ == "__main__":
     print("Generating training plots...")
 
@@ -220,5 +255,9 @@ if __name__ == "__main__":
     if len(histories) >= 2:
         plot_comparison(histories)
         plot_all_val_curves(histories)
+
+    # Confusion matrices (if available)
+    for name in ["split1", "split2", "split3", "overfit"]:
+        plot_confusion_matrix(name)
 
     print("\nAll plots saved to:", PLOTS_DIR)
