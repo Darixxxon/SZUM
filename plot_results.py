@@ -228,6 +228,46 @@ def plot_confusion_matrix(name: str):
     plt.close()
     print(f"  Saved: {save_path}")
 
+def plot_per_class_accuracy(name: str):
+    report_path = RESULTS_DIR / f"report_{name}.json"
+    if not report_path.exists():
+        print(f"  [SKIP] Report not found for {name}")
+        return
+    with open(report_path) as f:
+        report = json.load(f)
+    
+    le = get_label_encoder()
+    labels = list(le.classes_)
+    
+    accuracies = []
+    class_names = []
+    
+    for lbl in labels:
+        if lbl in report:
+            # recall is effectively the per-class accuracy (true positive rate)
+            accuracies.append(report[lbl]["recall"])
+            class_names.append(lbl)
+            
+    if not accuracies:
+        return
+        
+    plt.figure(figsize=(10, 12))
+    y_pos = np.arange(len(class_names))
+    # Reverse so the first class is at the top
+    plt.barh(y_pos, accuracies[::-1], color="#42A5F5", edgecolor="gray")
+    plt.yticks(y_pos, class_names[::-1], fontsize=8)
+    plt.xlabel("Accuracy (Recall)")
+    plt.title(f"Per-Class Accuracy — {name}")
+    plt.xlim(0, 1.05)
+    plt.grid(True, axis="x", alpha=0.3)
+    
+    plt.tight_layout()
+    save_path = PLOTS_DIR / f"per_class_acc_{name}.png"
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+    print(f"  Saved: {save_path}")
+
+
 if __name__ == "__main__":
     print("Generating training plots...")
 
@@ -256,8 +296,9 @@ if __name__ == "__main__":
         plot_comparison(histories)
         plot_all_val_curves(histories)
 
-    # Confusion matrices (if available)
+    # Confusion matrices & Per-class accuracy (if available)
     for name in ["split1", "split2", "split3", "overfit"]:
         plot_confusion_matrix(name)
+        plot_per_class_accuracy(name)
 
     print("\nAll plots saved to:", PLOTS_DIR)
