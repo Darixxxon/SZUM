@@ -39,6 +39,24 @@ def load_history(name: str) -> dict:
         return json.load(f)
 
 
+def load_report(name: str) -> dict:
+    path = RESULTS_DIR / f"report_{name}.json"
+    if not path.exists():
+        print(f"  [SKIP] {path} not found")
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+def load_metrics(name: str) -> dict:
+    path = RESULTS_DIR / f"metrics_{name}.json"
+    if not path.exists():
+        print(f"  [SKIP] {path} not found")
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
 def plot_loss_and_accuracy(history, title, filename_prefix, highlight_best=True):
     if history is None:
         return
@@ -307,6 +325,88 @@ def plot_model_eval_acc(name: str):
     print(f"  Saved: {save_path}")
 
 
+def plot_per_class_f1(name: str):
+    report = load_report(name)
+    if report is None:
+        return
+
+    le = get_label_encoder()
+    labels = list(le.classes_)
+
+    f1s = []
+    class_names = []
+
+    for lbl in labels:
+        if lbl in report:
+            f1s.append(report[lbl]["f1-score"])
+            class_names.append(lbl)
+
+    if not f1s:
+        return
+
+    plt.figure(figsize=(10, 12))
+    y_pos = np.arange(len(class_names))
+    plt.barh(y_pos, f1s[::-1], color="#8E24AA", edgecolor="gray")
+    plt.yticks(y_pos, class_names[::-1], fontsize=8)
+    plt.xlabel("F1 Score")
+    plt.title(f"Per-Class F1 Score — {name}")
+    plt.xlim(0, 1.05)
+    plt.grid(True, axis="x", alpha=0.3)
+
+    plt.tight_layout()
+    save_path = PLOTS_DIR / f"per_class_f1_{name}.png"
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+    print(f"  Saved: {save_path}")
+
+
+def plot_eval_metrics_comparison(names, filename="eval_metrics_comparison.png"):
+    labels = []
+    accuracies = []
+    macro_f1s = []
+    weighted_f1s = []
+
+    for name in names:
+        report = load_report(name)
+        if report is None:
+            continue
+
+        metrics = load_metrics(name) or {}
+        accuracy = metrics.get("accuracy", report.get("accuracy", 0))
+        macro_f1 = report.get("macro avg", {}).get("f1-score", 0)
+        weighted_f1 = report.get("weighted avg", {}).get("f1-score", 0)
+
+        labels.append(name.upper())
+        accuracies.append(accuracy)
+        macro_f1s.append(macro_f1)
+        weighted_f1s.append(weighted_f1)
+
+    if not labels:
+        print("  [SKIP] No evaluation metrics available for comparison")
+        return
+
+    x = np.arange(len(labels))
+    width = 0.25
+
+    plt.figure()
+    plt.bar(x - width, accuracies, width, label="Accuracy", color="#4CAF50", edgecolor="#2E7D32")
+    plt.bar(x, macro_f1s, width, label="Macro F1", color="#42A5F5", edgecolor="#1565C0")
+    plt.bar(x + width, weighted_f1s, width, label="Weighted F1", color="#FFA726", edgecolor="#EF6C00")
+
+    plt.ylabel("Score")
+    plt.title("Evaluation Metrics Comparison")
+    plt.xticks(x, labels)
+    plt.ylim(0, 1.05)
+    plt.grid(True, alpha=0.3, axis="y")
+    plt.legend()
+
+    plt.tight_layout()
+    save_path = PLOTS_DIR / filename
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+    print(f"  Saved: {save_path}")
+
+
 if __name__ == "__main__":
     print("Generating training plots...")
 
@@ -340,5 +440,8 @@ if __name__ == "__main__":
         plot_confusion_matrix(name)
         plot_per_class_accuracy(name)
         plot_model_eval_acc(name)
+        plot_per_class_f1(name)
+
+    plot_eval_metrics_comparison(["split1", "split2", "split3", "overfit"])
 
     print("\nAll plots saved to:", PLOTS_DIR)

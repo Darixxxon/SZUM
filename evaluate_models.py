@@ -31,13 +31,13 @@ def evaluate_model(name: str, loader_fn, ck_path: Path, device: torch.device):
     model = load_checkpoint(ck_path, num_classes=num_classes, device=device)
 
     # Build test loader
-    loader_train, loader_val, loader_test = loader_fn(batch_size=64, num_workers=0, img_size=224)
+    _, loader_val, _ = loader_fn(batch_size=64, num_workers=0, img_size=224)
 
     ys = []
     ypred = []
 
     with torch.no_grad():
-        for images, labels in tqdm(loader_test, desc=f"{name} test"):
+        for images, labels in tqdm(loader_val, desc=f"{name} test"):
             images = images.to(device)
             outputs = model(images)
             preds = outputs.argmax(dim=1).cpu().numpy()

@@ -16,6 +16,7 @@ from dataset_preparation import (
     get_split1_loaders,
     get_split2_loaders,
     get_split3_loaders,
+    get_class_weights,
 )
 
 MODELS_DIR = Path("models")
@@ -25,10 +26,6 @@ RESULTS_DIR = Path("training_results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {DEVICE}")
-if DEVICE.type == "cuda":
-    print(f"  GPU: {torch.cuda.get_device_name(0)}")
-    print(f"  VRAM: {torch.cuda.get_device_properties(0).total_memory // (1024**3)} GB")
 
 IS_CUDA = DEVICE.type == "cuda"
 TRAIN_IMG_SIZE = 224 if IS_CUDA else 128  
@@ -220,7 +217,8 @@ def run_experiment_1():
     )
 
     model = create_model(num_classes, pretrained=True, drop_rate=0.2)
-    criterion = nn.CrossEntropyLoss()
+    class_weights = torch.tensor(get_class_weights("train"), dtype=torch.float32, device=DEVICE)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
 
@@ -251,7 +249,8 @@ def run_overfit_experiment():
 
     # No dropout to encourage overfitting
     model = create_model(num_classes, pretrained=True, drop_rate=0.0)
-    criterion = nn.CrossEntropyLoss()
+    class_weights = torch.tensor(get_class_weights("train"), dtype=torch.float32, device=DEVICE)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=0.0)  # No weight decay
 
     trainer = Trainer(model, criterion, optimizer, scheduler=None)
@@ -278,7 +277,8 @@ def run_experiment_2():
     )
 
     model = create_model(num_classes, pretrained=True, drop_rate=0.2)
-    criterion = nn.CrossEntropyLoss()
+    class_weights = torch.tensor(get_class_weights("train"), dtype=torch.float32, device=DEVICE)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
 
@@ -306,7 +306,8 @@ def run_experiment_3():
     )
 
     model = create_model(num_classes, pretrained=True, drop_rate=0.2)
-    criterion = nn.CrossEntropyLoss()
+    class_weights = torch.tensor(get_class_weights("train"), dtype=torch.float32, device=DEVICE)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
 
@@ -336,6 +337,12 @@ def save_history(history: dict, path: Path):
     print(f"  History saved to {path}")
 
 if __name__ == "__main__":
+    
+    print(f"Using device: {DEVICE}")
+    if DEVICE.type == "cuda":
+        print(f"  GPU: {torch.cuda.get_device_name(0)}")
+        print(f"  VRAM: {torch.cuda.get_device_properties(0).total_memory // (1024**3)} GB")
+
     parser = argparse.ArgumentParser(description="Task 3: ML Model Training")
     parser.add_argument(
         "--experiment",

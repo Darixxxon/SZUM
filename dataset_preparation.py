@@ -166,6 +166,26 @@ def get_label_encoder():
     return data["le"]
 
 
+def get_class_weights(split: str = "train"):
+    data = _prepare_data()
+
+    if split == "train":
+        idx = data["idx_train"]
+    elif split == "val":
+        idx = data["idx_val"]
+    elif split == "test":
+        idx = data["idx_test"]
+    else:
+        raise ValueError("split must be one of: train, val, test")
+
+    labels = data["all_labels_enc"][idx]
+    counts = np.bincount(labels, minlength=len(data["le"].classes_))
+
+    # Inverse-frequency weights, normalized to keep average weight at 1.0
+    weights = counts.sum() / (len(counts) * np.maximum(counts, 1))
+    return weights
+
+
 def get_split1_loaders(batch_size=BATCH_SIZE, fraction=1.0, num_workers=0, img_size=IMG_SIZE):
     data = _prepare_data()
     raw_tf = get_raw_transform(img_size)
